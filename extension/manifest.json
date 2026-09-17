@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "Wallet",
+  "version": "1.0.0",
+  "description": "Multi-chain wallet interface with live market prices, swaps and transaction history (sandbox).",
+  "permissions": ["storage"],
+  "action": { "default_popup": "popup.html", "default_icon": "icon-128.png" },
+  "icons": { "48": "icon-48.png", "128": "icon-128.png" }
+}
