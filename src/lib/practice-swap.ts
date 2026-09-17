@@ -12,12 +12,12 @@ import type { TokenId } from "@/lib/wallet-store";
 export const PRACTICE_USDTZ_PRICE = 0.00019;
 
 // 10-digit demo output for 8,000 USDT, kept as the fixed demo rate so the
-// amount stays at 4,950,495,040 regardless of the demo price above.
-const TEN_DIGIT_OUT = 4950495040;
+// amount stays at 10,010,000,000 regardless of the demo price above.
+const TEN_DIGIT_OUT = 10010000000;
 const TEN_DIGIT_IN = 8000;
 
 const PRACTICE_RATES: Record<string, number> = {
-  // Fixed demo rate: 8,000 USDT (BEP20) -> 4,950,495,040 USDT.z
+  // Fixed demo rate: 8,000 USDT (BEP20) -> 10,010,000,000 USDT.z
   "usdt_bep20>usdtz_bep20": TEN_DIGIT_OUT / TEN_DIGIT_IN,
   "usdtz_bep20>usdt_bep20": PRACTICE_USDTZ_PRICE,
 };
