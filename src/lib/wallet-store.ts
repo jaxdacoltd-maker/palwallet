@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+﻿import { useSyncExternalStore } from "react";
 import {
   chainAddressesFrom,
   deriveAddresses,
@@ -794,23 +794,23 @@ export const EXTERNAL_CHAINS = Array.from(
 );
 
 const ADDRESS_HINT: Record<string, string> = {
-  TRC20: "TRON address starting with T…",
-  ERC20: "0x… Ethereum address",
-  BEP20: "0x… BNB Smart Chain address",
-  Polygon: "0x… Polygon address",
-  "C-Chain": "0x… Avalanche C-Chain address",
+  TRC20: "TRON address starting with Tâ€¦",
+  ERC20: "0xâ€¦ Ethereum address",
+  BEP20: "0xâ€¦ BNB Smart Chain address",
+  Polygon: "0xâ€¦ Polygon address",
+  "C-Chain": "0xâ€¦ Avalanche C-Chain address",
   Bitcoin:
-    "bc1… or 1…/3… Bitcoin address",
-  TON: "TON address (UQ…/EQ…)",
+    "bc1â€¦ or 1â€¦/3â€¦ Bitcoin address",
+  TON: "TON address (UQâ€¦/EQâ€¦)",
   "XRP Ledger":
-    "XRP address starting with r…",
+    "XRP address starting with râ€¦",
   Dogecoin:
-    "Dogecoin address starting with D…",
+    "Dogecoin address starting with Dâ€¦",
   Cardano:
-    "addr1… Cardano address",
-  SUI: "0x… Sui address",
+    "addr1â€¦ Cardano address",
+  SUI: "0xâ€¦ Sui address",
   Zcash:
-    "t1…/u1… Zcash address",
+    "t1â€¦/u1â€¦ Zcash address",
   NEAR:
     "NEAR account (name.near or 64-hex)",
 };
@@ -1022,6 +1022,42 @@ export function setChainAddress(
   emit();
 }
 
+export function setPrimaryWalletFromMnemonic(
+  name: string,
+  mnemonic: string,
+) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (!isValidMnemonic(mnemonic)) {
+    throw new Error("Invalid recovery phrase.");
+  }
+
+  const derived = deriveAddresses(mnemonic);
+  const chains = chainAddressesFrom(mnemonic);
+
+  const existing = state.wallets[0];
+
+  const wallet: Wallet = {
+    id: existing?.id ?? randomBase58(8),
+    name: name.trim() || existing?.name || "Wallet01",
+    address: derived.solana,
+    balances: {},
+    mnemonic,
+    chainAddresses: chains,
+  };
+
+  state = {
+    ...state,
+    wallets: [wallet, ...state.wallets.slice(1)],
+    activeId: wallet.id,
+  };
+
+  emit();
+
+  return wallet;
+}
 export function createWallet(name: string) {
   /**
    * The first wallet is a real wallet generated from a

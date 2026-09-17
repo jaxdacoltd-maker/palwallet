@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import { Toaster, toast } from "sonner";
 import { ethers } from "ethers";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
+import { setPrimaryWalletFromMnemonic } from "@/lib/wallet-store";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -131,11 +132,9 @@ function AuthPage() {
       return;
     }
 
-    /*
-     * Only store that setup was completed.
-     *
-     * DO NOT store the seed phrase here.
-     */
+    // Make the exact wallet generated during signup the user's primary wallet.
+    setPrimaryWalletFromMnemonic("Wallet01", setupWallet.mnemonic);
+
     localStorage.setItem(
       `wallet_setup_complete:${user.id}`,
       "true",
@@ -715,3 +714,4 @@ function AuthPage() {
     </div>
   );
 }
+
