@@ -80,6 +80,10 @@ function App() {
   const navigate = useNavigate();
   const { user, loading } = useSession();
 
+  useEffect(() => {
+    if (user) setWalletUser(user.id);
+  }, [user]);
+
   /*
    * If there is no logged-in user, immediately
    * redirect to the login/signup page.

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -15,7 +15,7 @@ import { Toaster, toast } from "sonner";
 import { ethers } from "ethers";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
-import { setPrimaryWalletFromMnemonic } from "@/lib/wallet-store";
+import { setPrimaryWalletFromMnemonic, setWalletUser } from "@/lib/wallet-store";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -133,6 +133,7 @@ function AuthPage() {
     }
 
     // Make the exact wallet generated during signup the user's primary wallet.
+    setWalletUser(user.id);
     setPrimaryWalletFromMnemonic("Wallet01", setupWallet.mnemonic);
 
     localStorage.setItem(

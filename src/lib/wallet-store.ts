@@ -1,4 +1,4 @@
-﻿import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
   chainAddressesFrom,
   deriveAddresses,
@@ -390,7 +390,8 @@ export interface WalletState {
   customTokens?: TokenMeta[];
 }
 
-const KEY = "sp_wallet_state_v10";
+let KEY = "sp_wallet_state_v10";
+let walletUserId: string | null = null;
 
 /**
  * Fixed addresses used by every wallet after the first one.
@@ -482,6 +483,18 @@ function emptyState(): WalletState {
 let state: WalletState = emptyState();
 let loaded = false;
 
+export function setWalletUser(userId: string) {
+  if (typeof window === "undefined" || !userId) return;
+  if (walletUserId === userId && loaded) return;
+
+  walletUserId = userId;
+  KEY = "sp_wallet_state_v10:" + userId;
+  loaded = false;
+  state = emptyState();
+  load();
+  listeners.forEach((listener) => listener());
+}
+
 const listeners = new Set<() => void>();
 
 /** Add imported tokens to the live token list without duplicates. */
@@ -564,7 +577,7 @@ export function removeCustomToken(id: TokenId) {
  * wallet is generated here rather than during SSR.
  */
 function load() {
-  if (loaded || typeof window === "undefined") {
+  if (loaded || typeof window === "undefined" || !walletUserId) {
     return;
   }
 
@@ -794,23 +807,23 @@ export const EXTERNAL_CHAINS = Array.from(
 );
 
 const ADDRESS_HINT: Record<string, string> = {
-  TRC20: "TRON address starting with Tâ€¦",
-  ERC20: "0xâ€¦ Ethereum address",
-  BEP20: "0xâ€¦ BNB Smart Chain address",
-  Polygon: "0xâ€¦ Polygon address",
-  "C-Chain": "0xâ€¦ Avalanche C-Chain address",
+  TRC20: "TRON address starting with T…",
+  ERC20: "0x… Ethereum address",
+  BEP20: "0x… BNB Smart Chain address",
+  Polygon: "0x… Polygon address",
+  "C-Chain": "0x… Avalanche C-Chain address",
   Bitcoin:
-    "bc1â€¦ or 1â€¦/3â€¦ Bitcoin address",
-  TON: "TON address (UQâ€¦/EQâ€¦)",
+    "bc1… or 1…/3… Bitcoin address",
+  TON: "TON address (UQ…/EQ…)",
   "XRP Ledger":
-    "XRP address starting with râ€¦",
+    "XRP address starting with r…",
   Dogecoin:
-    "Dogecoin address starting with Dâ€¦",
+    "Dogecoin address starting with D…",
   Cardano:
-    "addr1â€¦ Cardano address",
-  SUI: "0xâ€¦ Sui address",
+    "addr1… Cardano address",
+  SUI: "0x… Sui address",
   Zcash:
-    "t1â€¦/u1â€¦ Zcash address",
+    "t1…/u1… Zcash address",
   NEAR:
     "NEAR account (name.near or 64-hex)",
 };
