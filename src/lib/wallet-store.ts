@@ -460,16 +460,10 @@ function makeWallet(
 }
 
 /**
- * IMPORTANT:
+ * Do NOT generate a wallet during module initialization.
  *
- * Do NOT generate a wallet here.
- *
- * This file can be imported by Cloudflare/SSR.
- * Secure random generation during module initialization causes
- * Cloudflare Workers SSR to fail.
- *
- * The real first wallet is created inside load(), which only
- * runs in the browser.
+ * Cloudflare Workers imports this file during SSR.
+ * Random wallet generation must happen only in the browser.
  */
 function emptyState(): WalletState {
   return {
@@ -484,14 +478,21 @@ let state: WalletState = emptyState();
 let loaded = false;
 
 export function setWalletUser(userId: string) {
-  if (typeof window === "undefined" || !userId) return;
-  if (walletUserId === userId && loaded) return;
+  if (typeof window === "undefined" || !userId) {
+    return;
+  }
+
+  if (walletUserId === userId && loaded) {
+    return;
+  }
 
   walletUserId = userId;
   KEY = "sp_wallet_state_v10:" + userId;
   loaded = false;
   state = emptyState();
+
   load();
+
   listeners.forEach((listener) => listener());
 }
 
@@ -571,13 +572,15 @@ export function removeCustomToken(id: TokenId) {
 /**
  * Load wallet state.
  *
- * This function is browser-only.
- *
- * On a brand-new browser with no saved wallet, the first
- * wallet is generated here rather than during SSR.
+ * Existing wallets are NEVER assigned a new mnemonic automatically.
+ * This is critical because a new mnemonic produces a new BSC address.
  */
 function load() {
-  if (loaded || typeof window === "undefined" || !walletUserId) {
+  if (
+    loaded ||
+    typeof window === "undefined" ||
+    !walletUserId
+  ) {
     return;
   }
 
@@ -601,61 +604,79 @@ function load() {
         changed = true;
       }
 
-      if (!state.hidden) {
+      if (typeof state.hidden !== "boolean") {
         state.hidden = false;
+        changed = true;
       }
 
       /**
-       * Existing wallets.
+       * EXISTING WALLETS
+       *
+       * Never generate a replacement mnemonic here.
        */
       state.wallets.forEach((wallet) => {
+        /*
+         * If an old wallet has no valid mnemonic, preserve it.
+         * DO NOT generate a new one automatically.
+         */
         if (
           !wallet.mnemonic ||
           !isValidMnemonic(wallet.mnemonic)
         ) {
-          /**
-           * Only do this in the browser.
-           */
-          wallet.mnemonic = newMnemonic();
-          changed = true;
+          return;
         }
 
-        /**
-         * Every normal wallet owns its own keys.
-         *
-         * Preset wallets are watch-only and keep their
-         * supplied addresses.
+        /*
+         * Preset/watch-only wallets keep their fixed addresses.
          */
         if (!wallet.preset) {
           const derived = deriveAddresses(
             wallet.mnemonic,
           );
 
-          if (wallet.address !== derived.solana) {
+          /*
+           * Preserve an existing Solana address.
+           * Only fill it if it is genuinely missing.
+           */
+          if (!wallet.address) {
             wallet.address = derived.solana;
             changed = true;
           }
 
-          const chains = chainAddressesFrom(
-            wallet.mnemonic,
-          );
+          /*
+           * Derive addresses from the EXISTING mnemonic.
+           *
+           * Existing addresses are preserved.
+           * Missing addresses are filled in.
+           *
+           * This prevents the BSC/BEP20 address from changing.
+           */
+          const derivedChains =
+            chainAddressesFrom(wallet.mnemonic);
+
+          const existingChains =
+            wallet.chainAddresses ?? {};
+
+          const mergedChains: Record<string, string> = {
+            ...derivedChains,
+            ...existingChains,
+          };
 
           if (
-            JSON.stringify(wallet.chainAddresses ?? {}) !==
-            JSON.stringify(chains)
+            JSON.stringify(existingChains) !==
+            JSON.stringify(mergedChains)
           ) {
-            wallet.chainAddresses = chains;
+            wallet.chainAddresses = mergedChains;
             changed = true;
           }
         }
 
-        /**
-         * Balances are refreshed from blockchain providers.
-         * Do not persist fake/stale balance values.
+        /*
+         * Balances are refreshed by the blockchain provider.
          */
         if (
           wallet.balances &&
-          Object.keys(wallet.balances).length
+          Object.keys(wallet.balances).length > 0
         ) {
           wallet.balances = {};
           changed = true;
@@ -664,9 +685,9 @@ function load() {
 
       registerTokens(state.customTokens ?? []);
 
-      /**
-       * Existing saved data with no wallets.
-       * Generate the first wallet in the browser.
+      /*
+       * If saved data contains no wallets, this is a genuine
+       * new wallet state, so create the first wallet.
        */
       if (state.wallets.length === 0) {
         const wallet = makeWallet("Wallet01");
@@ -680,8 +701,8 @@ function load() {
         changed = true;
       }
 
-      /**
-       * Make sure activeId points to an existing wallet.
+      /*
+       * Make sure activeId points to a real wallet.
        */
       if (
         !state.activeId ||
@@ -689,7 +710,8 @@ function load() {
           (wallet) => wallet.id === state.activeId,
         )
       ) {
-        state.activeId = state.wallets[0]?.id ?? "";
+        state.activeId =
+          state.wallets[0]?.id ?? "";
         changed = true;
       }
 
@@ -700,11 +722,11 @@ function load() {
         );
       }
     } else {
-      /**
+      /*
        * BRAND-NEW USER
        *
-       * Wallet generation happens only here, after the
-       * browser has loaded and localStorage is available.
+       * This is the only normal path that creates a new
+       * wallet automatically.
        */
       const wallet = makeWallet("Wallet01");
 
@@ -721,9 +743,9 @@ function load() {
       );
     }
   } catch {
-    /**
-     * If localStorage contains damaged data, keep the
-     * in-memory state instead of crashing the application.
+    /*
+     * Keep in-memory state if localStorage is damaged.
+     * Do not generate another wallet as a fallback.
      */
   }
 }
@@ -760,11 +782,8 @@ export function useWalletState(): WalletState {
       load();
       return state;
     },
-    /**
-     * Server snapshot must remain completely deterministic.
-     *
-     * No wallet generation, crypto random calls, localStorage,
-     * or asynchronous work is performed here.
+    /*
+     * Server snapshot must remain deterministic.
      */
     () => state,
   );
@@ -772,8 +791,13 @@ export function useWalletState(): WalletState {
 
 export const getState = () => state;
 
-export const activeWallet = (s: WalletState) =>
-  s.wallets.find((wallet) => wallet.id === s.activeId) ?? s.wallets[0];
+export const activeWallet = (
+  s: WalletState,
+): Wallet | undefined =>
+  s?.wallets?.find(
+    (wallet) => wallet.id === s.activeId,
+  ) ??
+  s?.wallets?.[0];
 
 export function setActive(id: string) {
   state = {
@@ -929,7 +953,8 @@ export function explorerAddressUrl(
   chain: string,
   address: string,
 ): string | undefined {
-  const formatter = EXPLORER_ADDRESS[chain];
+  const formatter =
+    EXPLORER_ADDRESS[chain];
 
   return formatter && address
     ? formatter(address)
@@ -990,7 +1015,8 @@ export function explorerTxUrl(
   chain: string,
   hash: string,
 ): string | undefined {
-  const formatter = EXPLORER_TX[chain];
+  const formatter =
+    EXPLORER_TX[chain];
 
   return formatter && hash
     ? formatter(hash)
@@ -1004,26 +1030,28 @@ export function setChainAddress(
   const activeId = state.activeId;
   const value = address.trim();
 
-  const wallets = state.wallets.map((wallet) => {
-    if (wallet.id !== activeId) {
-      return wallet;
-    }
+  const wallets = state.wallets.map(
+    (wallet) => {
+      if (wallet.id !== activeId) {
+        return wallet;
+      }
 
-    const next = {
-      ...(wallet.chainAddresses ?? {}),
-    };
+      const next = {
+        ...(wallet.chainAddresses ?? {}),
+      };
 
-    if (value) {
-      next[chain] = value;
-    } else {
-      delete next[chain];
-    }
+      if (value) {
+        next[chain] = value;
+      } else {
+        delete next[chain];
+      }
 
-    return {
-      ...wallet,
-      chainAddresses: next,
-    };
-  });
+      return {
+        ...wallet,
+        chainAddresses: next,
+      };
+    },
+  );
 
   state = {
     ...state,
@@ -1033,6 +1061,12 @@ export function setChainAddress(
   emit();
 }
 
+/**
+ * Make the wallet generated during signup the primary wallet.
+ *
+ * The supplied mnemonic is the source of truth for all
+ * derived network addresses, including BSC/BEP20.
+ */
 export function setPrimaryWalletFromMnemonic(
   name: string,
   mnemonic: string,
@@ -1042,17 +1076,28 @@ export function setPrimaryWalletFromMnemonic(
   }
 
   if (!isValidMnemonic(mnemonic)) {
-    throw new Error("Invalid recovery phrase.");
+    throw new Error(
+      "Invalid recovery phrase.",
+    );
   }
 
-  const derived = deriveAddresses(mnemonic);
-  const chains = chainAddressesFrom(mnemonic);
+  const derived =
+    deriveAddresses(mnemonic);
 
-  const existing = state.wallets[0];
+  const chains =
+    chainAddressesFrom(mnemonic);
+
+  const existing =
+    state.wallets[0];
 
   const wallet: Wallet = {
-    id: existing?.id ?? randomBase58(8),
-    name: name.trim() || existing?.name || "Wallet01",
+    id:
+      existing?.id ??
+      randomBase58(8),
+    name:
+      name.trim() ||
+      existing?.name ||
+      "Wallet01",
     address: derived.solana,
     balances: {},
     mnemonic,
@@ -1061,7 +1106,10 @@ export function setPrimaryWalletFromMnemonic(
 
   state = {
     ...state,
-    wallets: [wallet, ...state.wallets.slice(1)],
+    wallets: [
+      wallet,
+      ...state.wallets.slice(1),
+    ],
     activeId: wallet.id,
   };
 
@@ -1069,15 +1117,19 @@ export function setPrimaryWalletFromMnemonic(
 
   return wallet;
 }
-export function createWallet(name: string) {
+
+export function createWallet(
+  name: string,
+) {
   /**
-   * The first wallet is a real wallet generated from a
-   * new mnemonic.
+   * The first wallet is a real wallet generated
+   * from a new mnemonic.
    *
-   * Additional wallets remain preset/watch-only according
-   * to the existing application design.
+   * Additional wallets remain preset/watch-only
+   * according to the existing application design.
    */
-  const first = state.wallets.length === 0;
+  const first =
+    state.wallets.length === 0;
 
   const wallet = first
     ? makeWallet(name)
@@ -1086,14 +1138,19 @@ export function createWallet(name: string) {
           name,
           {},
           PRESET_SOLANA,
-          { ...PRESET_CHAIN_ADDRESSES },
+          {
+            ...PRESET_CHAIN_ADDRESSES,
+          },
         ),
         preset: true,
       };
 
   state = {
     ...state,
-    wallets: [...state.wallets, wallet],
+    wallets: [
+      ...state.wallets,
+      wallet,
+    ],
     activeId: wallet.id,
   };
 
@@ -1108,13 +1165,14 @@ export function renameWallet(
 ) {
   state = {
     ...state,
-    wallets: state.wallets.map((wallet) =>
-      wallet.id === id
-        ? {
-            ...wallet,
-            name,
-          }
-        : wallet,
+    wallets: state.wallets.map(
+      (wallet) =>
+        wallet.id === id
+          ? {
+              ...wallet,
+              name,
+            }
+          : wallet,
     ),
   };
 
@@ -1125,7 +1183,8 @@ function slotNow() {
   return (
     300_000_000 +
     Math.floor(
-      (Date.now() - 1700000000000) / 400,
+      (Date.now() - 1700000000000) /
+        400,
     )
   );
 }
@@ -1147,13 +1206,17 @@ export function recordOnChainTx(input: {
   tokenOut?: TokenId;
   amountOut?: number;
 }) {
-  const wallet = activeWallet(state);
+  const wallet =
+    activeWallet(state);
 
   if (!wallet) {
-    throw new Error("No active wallet");
+    throw new Error(
+      "No active wallet",
+    );
   }
 
-  const fee = networkFee(input.token);
+  const fee =
+    networkFee(input.token);
 
   const tx: Tx = {
     signature: input.signature,
@@ -1167,22 +1230,36 @@ export function recordOnChainTx(input: {
     to: input.to,
     fromWalletId: wallet.id,
     ...(input.toWalletId
-      ? { toWalletId: input.toWalletId }
+      ? {
+          toWalletId:
+            input.toWalletId,
+        }
       : {}),
     tokenIn: input.token,
     amountIn: input.amount,
     ...(input.tokenOut
-      ? { tokenOut: input.tokenOut }
+      ? {
+          tokenOut:
+            input.tokenOut,
+        }
       : {}),
-    ...(input.amountOut !== undefined
-      ? { amountOut: input.amountOut }
+    ...(input.amountOut !==
+    undefined
+      ? {
+          amountOut:
+            input.amountOut,
+        }
       : {}),
-    usdValue: input.usdValue,
+    usdValue:
+      input.usdValue,
   };
 
   state = {
     ...state,
-    txs: [tx, ...state.txs],
+    txs: [
+      tx,
+      ...state.txs,
+    ],
   };
 
   emit();
@@ -1191,23 +1268,29 @@ export function recordOnChainTx(input: {
 }
 
 /**
- * Replace a wallet's balances with values read
- * from the blockchains.
+ * Replace a wallet's balances with values
+ * read from the blockchains.
  */
 export function setOnChainBalances(
   walletId: string,
-  balances: Partial<Record<TokenId, number>>,
+  balances: Partial<
+    Record<TokenId, number>
+  >,
 ) {
-  const wallet = state.wallets.find(
-    (item) => item.id === walletId,
-  );
+  const wallet =
+    state.wallets.find(
+      (item) =>
+        item.id === walletId,
+    );
 
   if (!wallet) {
     return;
   }
 
   if (
-    JSON.stringify(wallet.balances) ===
+    JSON.stringify(
+      wallet.balances,
+    ) ===
     JSON.stringify(balances)
   ) {
     return;
@@ -1215,14 +1298,16 @@ export function setOnChainBalances(
 
   state = {
     ...state,
-    wallets: state.wallets.map((item) =>
-      item.id === walletId
-        ? {
-            ...item,
-            balances,
-          }
-        : item,
-    ),
+    wallets:
+      state.wallets.map(
+        (item) =>
+          item.id === walletId
+            ? {
+                ...item,
+                balances,
+              }
+            : item,
+      ),
   };
 
   emit();
@@ -1232,10 +1317,14 @@ export function txsForWallet(
   s: WalletState,
   walletId: string,
 ) {
-  return s.txs.filter(
-    (tx) =>
-      tx.fromWalletId === walletId ||
-      tx.toWalletId === walletId,
+  return (
+    s?.txs?.filter(
+      (tx) =>
+        tx.fromWalletId ===
+          walletId ||
+        tx.toWalletId ===
+          walletId,
+    ) ?? []
   );
 }
 
@@ -1256,22 +1345,34 @@ export function formatAmount(
     return "0";
   }
 
-  if (Math.abs(n) < 0.000001) {
+  if (
+    Math.abs(n) <
+    0.000001
+  ) {
     return n.toExponential(2);
   }
 
-  return n.toLocaleString("en-US", {
-    maximumFractionDigits: decimals,
-  });
+  return n.toLocaleString(
+    "en-US",
+    {
+      maximumFractionDigits:
+        decimals,
+    },
+  );
 }
 
-export function formatUsd(n: number) {
+export function formatUsd(
+  n: number,
+) {
   return (
     "$" +
-    n.toLocaleString("en-US", {
-      maximumFractionDigits:
-        n < 1 ? 6 : 2,
-    })
+    n.toLocaleString(
+      "en-US",
+      {
+        maximumFractionDigits:
+          n < 1 ? 6 : 2,
+      },
+    )
   );
 }
 
@@ -1283,7 +1384,10 @@ export function shortAddr(
     return "";
   }
 
-  if (address.length <= n * 2 + 3) {
+  if (
+    address.length <=
+    n * 2 + 3
+  ) {
     return address;
   }
 
@@ -1293,5 +1397,3 @@ export function shortAddr(
     address.slice(-n)
   );
 }
-
-

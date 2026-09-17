@@ -137,7 +137,7 @@ export async function fetchOnChainBalances(wallet: Wallet): Promise<OnChainResul
   const addrs = wallet.chainAddresses ?? {};
 
   const jobs: Promise<void>[] = [];
-  if (wallet.address) jobs.push(solanaBalances(wallet.address, out).catch(() => void errors.push("Solana")));
+  if (wallet.address && !wallet.preset) jobs.push(solanaBalances(wallet.address, out).catch(() => void errors.push("Solana")));
   for (const chain of Object.keys(EVM_RPC)) {
     const a = addrs[chain];
     if (a) jobs.push(evmBalances(chain, a, out).catch(() => void errors.push(chain)));
@@ -159,3 +159,4 @@ export function useOnChainBalances(wallet: Wallet | undefined) {
     staleTime: 15_000,
   });
 }
+
