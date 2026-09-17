@@ -773,9 +773,7 @@ export function useWalletState(): WalletState {
 export const getState = () => state;
 
 export const activeWallet = (s: WalletState) =>
-  s.wallets.find(
-    (wallet) => wallet.id === s.activeId,
-  )!;
+  s.wallets.find((wallet) => wallet.id === s.activeId) ?? s.wallets[0];
 
 export function setActive(id: string) {
   state = {
@@ -1295,3 +1293,5 @@ export function shortAddr(
     address.slice(-n)
   );
 }
+
+

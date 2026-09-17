@@ -16,6 +16,7 @@ import {
   activeWallet,
   createWallet,
   setActive,
+  setWalletUser,
   shortAddr,
   useWalletState,
 } from "@/lib/wallet-store";
@@ -68,6 +69,7 @@ type Tab =
 function App() {
   const state = useWalletState();
   const { prices, rows } = usePrices();
+
   const [tab, setTab] = useState<Tab>("wallet");
   const [history, setHistory] = useState(false);
   const [switcher, setSwitcher] = useState(false);
@@ -81,12 +83,13 @@ function App() {
   const { user, loading } = useSession();
 
   useEffect(() => {
-    if (user) setWalletUser(user.id);
+    if (user) {
+      setWalletUser(user.id);
+    }
   }, [user]);
 
   /*
-   * If there is no logged-in user, immediately
-   * redirect to the login/signup page.
+   * If there is no logged-in user, redirect to login.
    */
   useEffect(() => {
     if (!loading && !user) {
@@ -115,13 +118,33 @@ function App() {
   }
 
   /*
-   * Prevent the wallet from appearing even for a
-   * moment when the user is not authenticated.
+   * No authenticated user.
    */
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-brand" />
+      </div>
+    );
+  }
+
+  /*
+   * IMPORTANT:
+   * After login, wallet-store can briefly have no active wallet
+   * while the user's wallet is being loaded from localStorage.
+   *
+   * Do not render anything that accesses w.name or w.address
+   * until the wallet exists.
+   */
+  if (!w) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-brand" />
+          <p className="text-sm text-muted-foreground">
+            Loading wallet...
+          </p>
+        </div>
       </div>
     );
   }
@@ -456,7 +479,7 @@ function NavIcon({
     strokeWidth: 1.7,
   } as const;
 
-  if (name === "wallet")
+  if (name === "wallet") {
     return (
       <svg {...common}>
         <rect
@@ -473,8 +496,9 @@ function NavIcon({
         />
       </svg>
     );
+  }
 
-  if (name === "market")
+  if (name === "market") {
     return (
       <svg {...common}>
         <path
@@ -483,8 +507,9 @@ function NavIcon({
         />
       </svg>
     );
+  }
 
-  if (name === "explore")
+  if (name === "explore") {
     return (
       <svg {...common}>
         <rect
@@ -511,8 +536,9 @@ function NavIcon({
         <path d="M17.5 3.5l3.5 3.5-3.5 3.5L14 7z" />
       </svg>
     );
+  }
 
-  if (name === "swap")
+  if (name === "swap") {
     return (
       <svg {...common}>
         <path
@@ -522,6 +548,7 @@ function NavIcon({
         />
       </svg>
     );
+  }
 
   return (
     <svg {...common}>
