@@ -440,7 +440,7 @@ export function SwapScreen({
 
         <Row label="Route">
           {practice
-            ? "—"
+            ? "BEP20 DEX"
             : quote
               ? quote.kind === "evm"
                 ? `${quote.chainName} DEX`
@@ -452,7 +452,7 @@ export function SwapScreen({
 
         <Row label="Slippage">
           {practice
-            ? "—"
+            ? "0.50%"
             : `${(SLIPPAGE_BPS / 100).toFixed(2)}%`}
         </Row>
 
@@ -595,7 +595,7 @@ function SwapSuccess({
 
           <Row label="Route">
             {result.practice
-              ? "—"
+              ? "BEP20 DEX"
               : "Jupiter (Solana)"}
           </Row>
 

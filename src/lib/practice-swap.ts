@@ -3,34 +3,25 @@ import type { TokenId } from "@/lib/wallet-store";
 /**
  * Practice-mode swap rates.
  *
- * These are NOT market prices. They only apply inside watch-only (preset)
- * wallets, where the swap screen is a labelled practice sandbox: nothing is
- * signed, broadcast, or recorded as a real transaction.
+ * These are demo/practice calculations only. They do not represent
+ * a real market price and do not create or broadcast a blockchain
+ * transaction.
  */
 
 // 1 USDT.z = $0.00019
 export const PRACTICE_USDTZ_PRICE = 0.00019;
 
-// 10-digit demo output for 8,000 USDT, kept as the fixed demo rate so the
-// amount stays at 10,010,000,000 regardless of the demo price above.
-const TEN_DIGIT_OUT = 10010000000;
-const TEN_DIGIT_IN = 8000;
+// At 8,000 USDT the demo enters the higher-digit tier.
+const HIGH_TIER_INPUT = 8000;
+const HIGH_TIER_OUTPUT = 10010000000;
 
 const PRACTICE_RATES: Record<string, number> = {
-  // Fixed demo rate: 8,000 USDT (BEP20) -> 10,010,000,000 USDT.z
-  "usdt_bep20>usdtz_bep20": TEN_DIGIT_OUT / TEN_DIGIT_IN,
-  "usdtz_bep20>usdt_bep20": PRACTICE_USDTZ_PRICE,
-};
+  "usdt_bep20>usdtz_bep20":
+    HIGH_TIER_OUTPUT / HIGH_TIER_INPUT,
 
-// Pairs whose demo output follows a tiered curve: while the input is below the
-// threshold the output stays in the 4-digit range, then at/above the threshold
-// it jumps to the full rate.
-const TIER_THRESHOLD: Record<string, number> = {
-  "usdt_bep20>usdtz_bep20": 8000,
+  "usdtz_bep20>usdt_bep20":
+    PRACTICE_USDTZ_PRICE,
 };
-
-const TIER_MIN_OUT = 1000;
-const TIER_MAX_OUT = 9999;
 
 export function practiceRate(
   from: TokenId,
@@ -40,29 +31,45 @@ export function practiceRate(
 }
 
 /**
- * Demo output amount for a practice swap. Returns 0 when the pair has no
- * practice rate.
+ * Demo output amount for a practice swap.
+ *
+ * Below 8,000 USDT:
+ *   USDT.z output = USDT input / 0.00019
+ *
+ * Therefore:
+ *   1,000 -> 5,263,157.89 USDT.z
+ *   2,000 -> 10,526,315.79 USDT.z
+ *   3,000 -> 15,789,473.68 USDT.z
+ *   4,000 -> 21,052,631.58 USDT.z
+ *   5,000 -> 26,315,789.47 USDT.z
+ *   6,000 -> 31,578,947.37 USDT.z
+ *   7,000 -> 36,842,105.26 USDT.z
+ *
+ * At 8,000 USDT:
+ *   10,010,000,000 USDT.z
  */
 export function practiceSwapOut(
   from: TokenId,
   to: TokenId,
   amt: number,
 ): number {
-  const rate = PRACTICE_RATES[`${from}>${to}`];
+  if (amt <= 0) return 0;
 
-  if (rate === undefined || amt <= 0) return 0;
+  const pair = `${from}>${to}`;
 
-  const threshold = TIER_THRESHOLD[`${from}>${to}`];
+  if (pair === "usdt_bep20>usdtz_bep20") {
+    // 1k through below 8k uses the $0.00019 demo price.
+    if (amt < HIGH_TIER_INPUT) {
+      return amt / PRACTICE_USDTZ_PRICE;
+    }
 
-  if (threshold === undefined || amt >= threshold) {
-    return amt * rate;
+    // 8k and above uses the existing high-tier demo rate.
+    return amt * (HIGH_TIER_OUTPUT / HIGH_TIER_INPUT);
   }
 
-  // Below the threshold: keep the output inside the 4-digit range.
-  const t = amt / threshold;
+  const rate = PRACTICE_RATES[pair];
 
-  return (
-    TIER_MIN_OUT +
-    t * (TIER_MAX_OUT - TIER_MIN_OUT)
-  );
+  if (rate === undefined) return 0;
+
+  return amt * rate;
 }
