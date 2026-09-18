@@ -53,6 +53,9 @@ export interface TokenMeta {
   logo?: string;
 }
 
+const USDTZ_LOGO =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x4BE35Ec329343d7d9F548d42B0F8c17FFfe07db4/logo.png";
+
 export const TOKENS: TokenMeta[] = [
   {
     id: "usdt",
@@ -263,6 +266,8 @@ export const TOKENS: TokenMeta[] = [
     decimals: 6,
     contract: "0x55d398326f99059fF775485246999027B3197955",
   },
+
+  // USDT.z BEP20 tokens
   {
     id: "usdtz_bep20",
     symbol: "USDT.z",
@@ -271,6 +276,7 @@ export const TOKENS: TokenMeta[] = [
     cgId: "",
     decimals: 18,
     contract: "0x4BE35Ec329343d7d9F548d42B0F8c17FFfe07db4",
+    logo: USDTZ_LOGO,
   },
   {
     id: "usdtz_bep20_2",
@@ -280,6 +286,7 @@ export const TOKENS: TokenMeta[] = [
     cgId: "",
     decimals: 18,
     contract: "0x13c9085C3742c7C311A60721F5BADd65353F8888",
+    logo: USDTZ_LOGO,
   },
   {
     id: "usdtz_bep20_3",
@@ -289,6 +296,7 @@ export const TOKENS: TokenMeta[] = [
     cgId: "",
     decimals: 18,
     contract: "0xDE356d54ac80D3B06024376987016f2B7cc04444",
+    logo: USDTZ_LOGO,
   },
   {
     id: "usdtz_bep20_4",
@@ -298,6 +306,7 @@ export const TOKENS: TokenMeta[] = [
     cgId: "",
     decimals: 18,
     contract: "0xa80A8cba9b40AC5dA81E84578a75c6ddA94C4444",
+    logo: USDTZ_LOGO,
   },
   {
     id: "usdtz_bep20_5",
@@ -307,6 +316,7 @@ export const TOKENS: TokenMeta[] = [
     cgId: "",
     decimals: 18,
     contract: "0x6eFE0ad534875C8A227f5229d5C2f57f43dB8493",
+    logo: USDTZ_LOGO,
   },
 ];
 
@@ -1314,9 +1324,7 @@ export function recordOnChainTx(input: {
  */
 export function setOnChainBalances(
   walletId: string,
-  balances: Partial<
-    Record<TokenId, number>
-  >,
+  balances: Partial<Record<TokenId, number>>,
 ) {
   const wallet =
     state.wallets.find(
