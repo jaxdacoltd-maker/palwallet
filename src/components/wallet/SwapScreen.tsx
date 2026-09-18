@@ -135,8 +135,11 @@ export function SwapScreen({
   const estimated =
     !practice && !quote && estimate > 0;
 
+  // Both practice and live swaps must not exceed the wallet balance.
   const valid = practice
-    ? amt > 0 && from !== to
+    ? amt > 0 &&
+      amt <= bal &&
+      from !== to
     : amt > 0 &&
       amt <= bal &&
       from !== to &&
@@ -218,13 +221,14 @@ export function SwapScreen({
   const label = useMemo(() => {
     if (from === to) return "Select different tokens";
 
+    // Balance check applies to practice/preset wallets too.
+    if (amt > bal) return "Insufficient balance";
+
     if (practice) return "Swap";
 
     if (!routable) {
       return "Estimate only — this pair can't be traded here";
     }
-
-    if (amt > bal) return "Insufficient balance";
 
     if (quoting) return "Finding best route…";
 
