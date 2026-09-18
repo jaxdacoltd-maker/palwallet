@@ -32,7 +32,11 @@ export type TokenId =
   | "usdt_trc20"
   | "usdt_erc20"
   | "usdt_bep20"
-  | "usdtz_bep20";
+  | "usdtz_bep20"
+  | "usdtz_bep20_2"
+  | "usdtz_bep20_3"
+  | "usdtz_bep20_4"
+  | "usdtz_bep20_5";
 
 export interface TokenMeta {
   id: TokenId;
@@ -267,6 +271,42 @@ export const TOKENS: TokenMeta[] = [
     cgId: "",
     decimals: 18,
     contract: "0x4BE35Ec329343d7d9F548d42B0F8c17FFfe07db4",
+  },
+  {
+    id: "usdtz_bep20_2",
+    symbol: "USDT.z",
+    name: "Tether USD Bridged ZED20",
+    chain: "BEP20",
+    cgId: "",
+    decimals: 18,
+    contract: "0x13c9085C3742c7C311A60721F5BADd65353F8888",
+  },
+  {
+    id: "usdtz_bep20_3",
+    symbol: "USDT.z",
+    name: "Tether USD Bridged ZED20",
+    chain: "BEP20",
+    cgId: "",
+    decimals: 18,
+    contract: "0xDE356d54ac80D3B06024376987016f2B7cc04444",
+  },
+  {
+    id: "usdtz_bep20_4",
+    symbol: "USDT.z",
+    name: "Tether USD Bridged ZED20",
+    chain: "BEP20",
+    cgId: "",
+    decimals: 18,
+    contract: "0xa80A8cba9b40AC5dA81E84578a75c6ddA94C4444",
+  },
+  {
+    id: "usdtz_bep20_5",
+    symbol: "USDT.z",
+    name: "Tether USD Bridged ZED20",
+    chain: "BEP20",
+    cgId: "",
+    decimals: 18,
+    contract: "0x6eFE0ad534875C8A227f5229d5C2f57f43dB8493",
   },
 ];
 
@@ -522,7 +562,8 @@ export function addCustomToken(input: {
 }): TokenMeta {
   const meta: TokenMeta = {
     id:
-      `c_${input.chain}_${input.symbol}_${randomBase58(4)}`.toLowerCase() as TokenId,
+      `c_${input.chain}_${input.symbol}_${randomBase58(4)}`
+        .toLowerCase() as TokenId,
     symbol: input.symbol.trim().toUpperCase(),
     name:
       input.name.trim() ||
@@ -615,7 +656,7 @@ function load() {
        * Never generate a replacement mnemonic here.
        */
       state.wallets.forEach((wallet) => {
-        /*
+        /**
          * If an old wallet has no valid mnemonic, preserve it.
          * DO NOT generate a new one automatically.
          */
@@ -626,7 +667,7 @@ function load() {
           return;
         }
 
-        /*
+        /**
          * Preset/watch-only wallets keep their fixed addresses.
          */
         if (!wallet.preset) {
@@ -634,7 +675,7 @@ function load() {
             wallet.mnemonic,
           );
 
-          /*
+          /**
            * Preserve an existing Solana address.
            * Only fill it if it is genuinely missing.
            */
@@ -643,7 +684,7 @@ function load() {
             changed = true;
           }
 
-          /*
+          /**
            * Derive addresses from the EXISTING mnemonic.
            *
            * Existing addresses are preserved.
@@ -671,7 +712,7 @@ function load() {
           }
         }
 
-        /*
+        /**
          * Balances are refreshed by the blockchain provider.
          */
         if (
@@ -685,7 +726,7 @@ function load() {
 
       registerTokens(state.customTokens ?? []);
 
-      /*
+      /**
        * If saved data contains no wallets, this is a genuine
        * new wallet state, so create the first wallet.
        */
@@ -701,7 +742,7 @@ function load() {
         changed = true;
       }
 
-      /*
+      /**
        * Make sure activeId points to a real wallet.
        */
       if (
@@ -722,7 +763,7 @@ function load() {
         );
       }
     } else {
-      /*
+      /**
        * BRAND-NEW USER
        *
        * This is the only normal path that creates a new
@@ -743,7 +784,7 @@ function load() {
       );
     }
   } catch {
-    /*
+    /**
      * Keep in-memory state if localStorage is damaged.
      * Do not generate another wallet as a fallback.
      */
@@ -782,7 +823,7 @@ export function useWalletState(): WalletState {
       load();
       return state;
     },
-    /*
+    /**
      * Server snapshot must remain deterministic.
      */
     () => state,
